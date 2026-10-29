@@ -1,5 +1,6 @@
 """Read-only Feishu app API sync. No user tokens or CLI installation required."""
 import csv, io, json, os, time, urllib.request, urllib.parse
+from urllib.error import HTTPError
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from parser import parse
@@ -15,6 +16,16 @@ def call(path, token=None, body=None):
             if result.get('code',0):
                 raise RuntimeError('飞书 API 错误 '+str(result.get('code'))+'：'+str(result.get('msg')))
             return result
+        except HTTPError as e:
+            raw = e.read().decode('utf-8', errors='replace')
+            try:
+                detail = json.loads(raw)
+                message = f"飞书 HTTP {e.code}；接口 {path}；错误码 {detail.get('code')}；原因 {detail.get('msg')}；详情 {json.dumps(detail.get('error', {}), ensure_ascii=False)}"
+            except ValueError:
+                message = f'飞书 HTTP {e.code}；接口 {path}；请检查飞书服务响应'
+            if e.code < 500 and e.code != 429: raise RuntimeError(message) from None
+            if attempt == 2: raise RuntimeError(message) from None
+            time.sleep(2**attempt)
         except Exception:
             if attempt == 2: raise
             time.sleep(2**attempt)
