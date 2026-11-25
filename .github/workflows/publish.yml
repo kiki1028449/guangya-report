@@ -1,8 +1,7 @@
 name: Sync Feishu and publish report
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 * * * *'
+  schedule:    - cron: '0,30 * * * *'
 permissions:
   contents: write
   pages: write
